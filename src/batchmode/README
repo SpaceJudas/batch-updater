@@ -1,0 +1,31 @@
+This package allows handling of batch updates for the remote database in the given specification document. The core
+class of the project is BatchUpdater, which must be constructed with a reference to a DatabaseDriver and a
+DocumentUpdateQueue that publishes changes. Calling the BatchUpdater's changeJobTitle or changeIndustry method
+will queue up a batch update for execution. Once at least one batch update has been queued, these batch updates may be
+executed using the executeBatchUpdates method, which will perform the necessary updates on the database.
+
+The UserDocumentIndex is my implementation of a database index. It essentially creates a multimap (UserFieldIndex) that
+uses stores job and industry titles as keys and maps them to sets of their associated user ids.  Although storage of
+the multimap is still a coefficient of n (where n is the number of records in the database) it is a much smaller
+coefficient since we are only storing n longs. The space complexity of this could be further improved by writing this
+information to the local file system (hard drive) as a series of text/binary files.
+
+The batchmode.data package contains several objects for transforming database JSONs and document update queue
+HashMaps into a usable manner. The io package contains frameworks and basic implementations to simulate a DatabaseDriver
+and a DocumentUpdateQueue that can be used in testing batch mode. The test package contains unit tests for the batchmode
+package.
+
+To integrate batchmode into production, refactor the usages of DocumentUpdateQueue and DatabaseDriver to match your
+actual driver implementations. In theory, you should only have to modify the import statements since I kept my naming
+conventions as close as possible to the ones you provided, but I cannot guarantee that.
+
+In general, I think my architectural choices are fairly straightforward. Off the top of my head the oddest choice that
+I made was to use Map<Long, SortedSet<DocumentUpdate>> to hold the changes database changes by external operations.
+The reasoning behind this is that since I have no control over the queue and since I was given no guarantee that the
+queue publishes updates in the exact order that they occur, updates received from the queue have the potential of being
+out of order. Thus, if one were to wait until batch mode, when we are assured that no queue updates are occurring,
+then we should have all of the version updates and can perform all of them in their correct order. On top of this, it
+ensures that the queue has no chance of hanging while waiting for our subscription function to update the index. It does
+however have the disadvantage of using more memory as it must keep a list of all queue updates.
+
+Should you have any questions about any other design choices that were made please don't hesitate to ask!
