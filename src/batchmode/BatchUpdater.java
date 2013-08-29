@@ -18,7 +18,6 @@ import java.util.*;
 public class BatchUpdater {
     DbDriver dbDriver;
     UserDocumentIndex index;
-    Map<Long, SortedSet<DocumentUpdate>> externalChanges;     //userId -> DocumentUpdate (sorted by version)
     Queue<BatchUpdatePair> industryBatchChanges;
     Queue<BatchUpdatePair> jobTitleBatchChanges;
 
@@ -26,7 +25,6 @@ public class BatchUpdater {
         //Initialize
         this.dbDriver = dbDriver;
         index = new UserDocumentIndex(dbDriver);
-        externalChanges = new HashMap<Long, SortedSet<DocumentUpdate>>();
         industryBatchChanges = new LinkedList<BatchUpdatePair>();
         jobTitleBatchChanges = new LinkedList<BatchUpdatePair>();
         //Subscribe to queue using anonymous class.
@@ -36,10 +34,7 @@ public class BatchUpdater {
                 @Override
                 public void publish(long userId, HashMap<String, Object> changes) {
                     Long userId_Obj = userId;
-                    if (!externalChanges.containsKey(userId_Obj))
-                        externalChanges.put(userId_Obj, new TreeSet<DocumentUpdate>());
-                    SortedSet<DocumentUpdate> userChanges = externalChanges.get(userId_Obj);
-                    userChanges.add(new DocumentUpdate(changes));
+                    index.updateId(userId, new DocumentUpdate(changes));
                 }
             });
     }
@@ -68,24 +63,9 @@ public class BatchUpdater {
      * Starts the batch
      */
     public void executeBatchUpdates() {
-        applyQueuedExternalChanges();
         applyQueuedBatchChanges();
     }
 
-    /**
-     * Applies all queued changes from external sources (obtained from the callback on the DocumentUpdateQueue) to the
-     * <code>BatchUpdater</code> index.
-     */
-    private void applyQueuedExternalChanges() {
-        for(Long userId : externalChanges.keySet()) {
-            SortedSet<DocumentUpdate> documentUpdates = externalChanges.get(userId);
-            for (DocumentUpdate update : documentUpdates) {
-                System.out.println(update.getVersion());
-                index.updateId(userId, update);
-            }
-        }
-        externalChanges.clear();
-    }
     /**
      * Applies all queued batch updates changes (obtained via the changeIndustry and changeJobTitle methods) to the
      * <code>BatchUpdater</code> index.
