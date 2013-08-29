@@ -23,15 +23,21 @@ public class UserDocumentIndex {
     }
 
     /**
-     * A recursive helper function that builds the index using the DbDriver.scan(). Both timeout and concurrency
-     * exceptions may occur when querying the database. Since Java has no way to copying iterators, the step count is
-     * incremented with every successful record retrieval so that when an exception occurs, it is caught and the method
-     * makes a recursive call, using its stepCount.
+     * Rebuilds the index from the database given at instantiation.
      */
     public void rebuildIndex() {
         jobTitleIndex.clear();
-        Iterator<Map.Entry<Long, Object>> it = dbDriver.scan();
-
+        industryIndex.clear();
+        rebuildIndex(0);
+    }
+    /**
+     * A recursive helper function that builds the index using the DbDriver.scan(). Both timeout and concurrency
+     * exceptions may occur when querying the database. Since Java has no way to copying iterators, the step count is
+     * incremented with every successful record retrieval so that when an exception occurs, it gets a new iterator using
+     * its step count.
+     */
+    private void rebuildIndex(int stepCount) {
+        Iterator<Map.Entry<Long, Object>> it = dbDriver.scan(stepCount);
         Map.Entry<Long, Object> entry;
         while(it.hasNext()) {
             try {
@@ -39,9 +45,11 @@ public class UserDocumentIndex {
                 User user = new User(entry.getValue().toString());
                 jobTitleIndex.putId(user.getJobTitle(), entry.getKey());
                 industryIndex.putId(user.getIndustry(), entry.getKey());
+                stepCount++;
             }
             catch (Exception c) {
                 //Retry
+                rebuildIndex(stepCount);
             }
         }
     }

@@ -90,4 +90,11 @@ public class DbDriverImpl implements DbDriver {
             }
         };
     }
+    public Iterator<Map.Entry<Long, Object>> scan(int count) {
+        Iterator<Map.Entry<Long,Object>> it = scan();
+        for (int i=0; i<count; i++) {
+            it.next();
+        }
+        return it;
+    }
 }

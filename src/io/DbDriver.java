@@ -33,4 +33,5 @@ public interface DbDriver {
      * @return an iterator for the database
      */
     public Iterator<Map.Entry<Long, Object>> scan();
+    public Iterator<Map.Entry<Long, Object>> scan(int userId);
 }
